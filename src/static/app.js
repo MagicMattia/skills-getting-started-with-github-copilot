@@ -48,7 +48,47 @@ document.addEventListener("DOMContentLoaded", () => {
       participants.forEach(p => {
         const li = document.createElement('li');
         li.className = 'participant-item';
-        li.textContent = p;
+        
+        const participantText = document.createElement('span');
+        participantText.textContent = p;
+        li.appendChild(participantText);
+        
+        const deleteIcon = document.createElement('span');
+        deleteIcon.className = 'delete-icon';
+        deleteIcon.innerHTML = '✕';
+        deleteIcon.addEventListener('click', async () => {
+          try {
+            const response = await fetch(`/activities/${encodeURIComponent(name)}/unregister?email=${encodeURIComponent(p)}`, {
+              method: 'DELETE'
+            });
+            
+            if (response.ok) {
+              // Rimuovi il partecipante dalla lista
+              li.remove();
+              
+              // Aggiorna il contatore
+              const badge = activityCard.querySelector('.participants-header .badge');
+              const currentCount = parseInt(badge.textContent) - 1;
+              badge.textContent = currentCount;
+              
+              // Se non ci sono più partecipanti, mostra il messaggio vuoto
+              if (currentCount === 0) {
+                const emptyLi = document.createElement('li');
+                emptyLi.className = 'participant-item empty';
+                emptyLi.textContent = 'No participants yet.';
+                ul.appendChild(emptyLi);
+              }
+
+              // Aggiorna il testo degli spot disponibili
+              const spots = activityCard.querySelector('.spots');
+              const spotsLeft = parseInt(spots.textContent.split('left')[0].trim()) + 1;
+              spots.innerHTML = `<strong>Availability:</strong> ${spotsLeft} spots left`;
+            }
+          } catch (error) {
+            console.error('Error unregistering participant:', error);
+          }
+        });
+        li.appendChild(deleteIcon);
         ul.appendChild(li);
       });
     } else {
@@ -124,7 +164,47 @@ document.addEventListener("DOMContentLoaded", () => {
             participants.forEach(p => {
               const li = document.createElement('li');
               li.className = 'participant-item';
-              li.textContent = p;
+              
+              const participantText = document.createElement('span');
+              participantText.textContent = p;
+              li.appendChild(participantText);
+              
+              const deleteIcon = document.createElement('span');
+              deleteIcon.className = 'delete-icon';
+              deleteIcon.innerHTML = '✕';
+              deleteIcon.addEventListener('click', async () => {
+                try {
+                  const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(p)}`, {
+                    method: 'DELETE'
+                  });
+                  
+                  if (response.ok) {
+                    // Rimuovi il partecipante dalla lista
+                    li.remove();
+                    
+                    // Aggiorna il contatore
+                    const badge = card.querySelector('.participants-header .badge');
+                    const currentCount = parseInt(badge.textContent) - 1;
+                    badge.textContent = currentCount;
+                    
+                    // Se non ci sono più partecipanti, mostra il messaggio vuoto
+                    if (currentCount === 0) {
+                      const emptyLi = document.createElement('li');
+                      emptyLi.className = 'participant-item empty';
+                      emptyLi.textContent = 'No participants yet.';
+                      ul.appendChild(emptyLi);
+                    }
+
+                    // Aggiorna il testo degli spot disponibili
+                    const spots = card.querySelector('.spots');
+                    const spotsLeft = parseInt(spots.textContent.split('left')[0].trim()) + 1;
+                    spots.innerHTML = `<strong>Availability:</strong> ${spotsLeft} spots left`;
+                  }
+                } catch (error) {
+                  console.error('Error unregistering participant:', error);
+                }
+              });
+              li.appendChild(deleteIcon);
               ul.appendChild(li);
             });
           } else {
