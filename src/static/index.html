@@ -45,6 +45,157 @@
       <p>&copy; 2023 Mergington High School</p>
     </footer>
 
-    <script src="app.js"></script>
+    <!-- Inline script: carica attività, renderizza activity-card con sezione Participants -->
+    <script>
+      (function () {
+        const activitiesListEl = document.getElementById('activities-list');
+        const activitySelect = document.getElementById('activity');
+        const signupForm = document.getElementById('signup-form');
+        const emailInput = document.getElementById('email');
+        const messageEl = document.getElementById('message');
+
+        function showMessage(text, type = 'info') {
+          messageEl.textContent = text;
+          messageEl.className = 'message ' + type;
+          // auto-hide after 3s
+          setTimeout(() => {
+            messageEl.className = 'hidden';
+            messageEl.textContent = '';
+          }, 3000);
+        }
+
+        function createActivityCard(name, data) {
+          const card = document.createElement('div');
+          card.className = 'activity-card';
+          card.dataset.activityName = name;
+
+          const title = document.createElement('h4');
+          title.textContent = name;
+          card.appendChild(title);
+
+          const desc = document.createElement('p');
+          desc.textContent = data.description;
+          card.appendChild(desc);
+
+          const sched = document.createElement('p');
+          sched.innerHTML = '<strong>Schedule:</strong> ' + data.schedule;
+          card.appendChild(sched);
+
+          const spots = document.createElement('p');
+          spots.className = 'spots';
+          spots.innerHTML = '<strong>Spots:</strong> ' + data.participants.length + ' / ' + data.max_participants;
+          card.appendChild(spots);
+
+          // Participants section (bulleted list)
+          const participantsWrapper = document.createElement('div');
+          participantsWrapper.className = 'participants-section';
+
+          const participantsHeader = document.createElement('div');
+          participantsHeader.className = 'participants-header';
+          participantsHeader.innerHTML = '<strong>Participants</strong> <span class="badge">' + data.participants.length + '</span>';
+          participantsWrapper.appendChild(participantsHeader);
+
+          const ul = document.createElement('ul');
+          ul.className = 'participants-list';
+          if (data.participants && data.participants.length > 0) {
+            data.participants.forEach(p => {
+              const li = document.createElement('li');
+              li.className = 'participant-item';
+              li.textContent = p;
+              ul.appendChild(li);
+            });
+          } else {
+            const li = document.createElement('li');
+            li.className = 'participant-item empty';
+            li.textContent = 'No participants yet.';
+            ul.appendChild(li);
+          }
+          participantsWrapper.appendChild(ul);
+
+          card.appendChild(participantsWrapper);
+
+          return card;
+        }
+
+        async function loadActivities() {
+          activitiesListEl.innerHTML = '<p>Loading activities...</p>';
+          try {
+            const res = await fetch('/activities');
+            const data = await res.json();
+            activitiesListEl.innerHTML = '';
+            activitySelect.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+
+            Object.keys(data).forEach(name => {
+              const card = createActivityCard(name, data[name]);
+              activitiesListEl.appendChild(card);
+
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name;
+              activitySelect.appendChild(opt);
+            });
+
+            if (!Object.keys(data).length) {
+              activitiesListEl.innerHTML = '<p>No activities available.</p>';
+            }
+          } catch (err) {
+            activitiesListEl.innerHTML = '<p class="error">Failed to load activities.</p>';
+            console.error(err);
+          }
+        }
+
+        // Handle signup form
+        signupForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = emailInput.value.trim();
+          const activityName = activitySelect.value;
+          if (!email || !activityName) {
+            showMessage('Please enter an email and select an activity.', 'error');
+            return;
+          }
+
+          try {
+            const url = '/activities/' + encodeURIComponent(activityName) + '/signup?email=' + encodeURIComponent(email);
+            const res = await fetch(url, { method: 'POST' });
+            if (!res.ok) {
+              const err = await res.json().catch(() => null);
+              throw new Error(err?.detail || 'Signup failed');
+            }
+            const result = await res.json();
+            showMessage(result.message || 'Signed up!', 'success');
+
+            // Update the participants list in the corresponding card without reloading everything
+            const card = document.querySelector(`.activity-card[data-activity-name="${CSS.escape(activityName)}"]`);
+            if (card) {
+              const ul = card.querySelector('.participants-list');
+              // remove "No participants yet." if present
+              const emptyItem = ul.querySelector('.participant-item.empty');
+              if (emptyItem) emptyItem.remove();
+              const li = document.createElement('li');
+              li.className = 'participant-item';
+              li.textContent = email;
+              ul.appendChild(li);
+
+              // update badge and spots text
+              const badge = card.querySelector('.participants-header .badge');
+              const spots = card.querySelector('.spots');
+              const currentCount = ul.querySelectorAll('.participant-item').length;
+              badge.textContent = currentCount;
+              // parse max from spots text (simple approach)
+              const max = spots.textContent.split('/').pop().trim();
+              spots.innerHTML = '<strong>Spots:</strong> ' + currentCount + ' / ' + max;
+            }
+            // clear email input
+            emailInput.value = '';
+          } catch (err) {
+            showMessage(err.message || 'Signup failed', 'error');
+            console.error(err);
+          }
+        });
+
+        // Initial load
+        loadActivities();
+      })();
+    </script>
   </body>
 </html>
